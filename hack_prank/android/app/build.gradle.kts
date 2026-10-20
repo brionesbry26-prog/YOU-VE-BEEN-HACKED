@@ -24,7 +24,8 @@ android {
         applicationId = "com.example.hack_prank"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = flutter.minSdkVersion
+        // CameraX (used only by the optional reaction photo) requires API 23+.
+        minSdk = 24
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

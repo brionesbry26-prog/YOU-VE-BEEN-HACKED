@@ -5,7 +5,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Hack Prank</string>
+	<string>You've Been Hacked</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -41,6 +41,14 @@
 		<string>UIInterfaceOrientationLandscapeLeft</string>
 		<string>UIInterfaceOrientationLandscapeRight</string>
 	</array>
+	<key>NSCameraUsageDescription</key>
+	<string>Only used if you choose "Capture your reaction" after the prank is revealed. Photos are never uploaded.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>This app never records audio. The microphone is not used.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Saves your reaction photo to your library, only when you tap Save.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Saves your reaction photo to a "Hack Prank" album, only when you tap Save.</string>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
