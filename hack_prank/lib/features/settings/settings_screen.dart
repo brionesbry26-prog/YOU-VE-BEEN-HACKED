@@ -4,10 +4,13 @@ import '../../core/app_services.dart';
 import '../../core/constants/prank_constants.dart';
 import '../../core/services/audio_service.dart';
 import '../../core/services/preferences_service.dart';
+import '../../core/services/shake_detector.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 
 /// Every option applies immediately and is saved on the device.
+///
+/// Reached from the awareness screen (the app has no home screen).
 ///
 /// There is intentionally no option to disable the reveal or the exit
 /// controls; the "Always on" section lists those guarantees.
@@ -20,7 +23,7 @@ class SettingsScreen extends StatelessWidget {
     final controller = services.settings;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('CUSTOMIZE')),
+      appBar: AppBar(title: const Text('SETTINGS')),
       body: ListenableBuilder(
         listenable: controller,
         builder: (context, _) {
@@ -30,7 +33,7 @@ class SettingsScreen extends StatelessWidget {
           return ListView(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
             children: [
-              const _Header('DURATION'),
+              const _Header('COUNTDOWN'),
               _Card(
                 children: [
                   Padding(
@@ -44,18 +47,50 @@ class SettingsScreen extends StatelessWidget {
                         side: const BorderSide(color: AppColors.hackerGreen),
                       ),
                       segments: [
-                        for (final d in PrankConstants.allowedDurations)
+                        for (final d in PrankConstants.allowedCountdowns)
                           ButtonSegment<int>(value: d, label: Text('${d}s')),
                       ],
-                      selected: {s.durationSeconds},
-                      onSelectionChanged: (v) => set(s.copyWith(durationSeconds: v.first)),
+                      selected: {s.countdownSeconds},
+                      onSelectionChanged: (v) => set(s.copyWith(countdownSeconds: v.first)),
                     ),
                   ),
                   const Padding(
                     padding: EdgeInsets.fromLTRB(16, 0, 16, 12),
                     child: _Hint(
-                      'Total time from start until the automatic reveal. '
-                      'A third of it is the ransom countdown.',
+                      'Length of the final "TIME REMAINING" countdown. When it '
+                      'ends, the awareness screen always appears.',
+                    ),
+                  ),
+                ],
+              ),
+              const _Header('SHAKE TO REVEAL'),
+              _Card(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(12),
+                    child: SegmentedButton<ShakeSensitivity>(
+                      showSelectedIcon: false,
+                      style: SegmentedButton.styleFrom(
+                        selectedBackgroundColor: AppColors.hackerGreen,
+                        selectedForegroundColor: AppColors.background,
+                        foregroundColor: AppColors.hackerGreen,
+                        side: const BorderSide(color: AppColors.hackerGreen),
+                      ),
+                      segments: const [
+                        ButtonSegment(value: ShakeSensitivity.low, label: Text('Low')),
+                        ButtonSegment(value: ShakeSensitivity.medium, label: Text('Medium')),
+                        ButtonSegment(value: ShakeSensitivity.high, label: Text('High')),
+                      ],
+                      selected: {s.shakeSensitivity},
+                      onSelectionChanged: (v) => set(s.copyWith(shakeSensitivity: v.first)),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                    child: _Hint(
+                      '${s.shakeSensitivity.label}. A deliberate back-and-forth '
+                      'shake ends the simulation at any stage; walking or putting '
+                      'the phone down does not.',
                     ),
                   ),
                 ],
@@ -68,7 +103,6 @@ class SettingsScreen extends StatelessWidget {
                       subtitle: 'Type terminal text character by character'),
                   _Toggle('Screen shake', s.screenShake, (v) => set(s.copyWith(screenShake: v))),
                   _Toggle('Glitch effects', s.glitchEffects, (v) => set(s.copyWith(glitchEffects: v))),
-                  _Toggle('Confetti', s.confetti, (v) => set(s.copyWith(confetti: v))),
                   _Toggle('Vibration', s.vibration, (v) => set(s.copyWith(vibration: v)),
                       subtitle: 'Short pulses at key moments. Follows system settings'),
                 ],
@@ -92,7 +126,7 @@ class SettingsScreen extends StatelessWidget {
                   _Toggle('Background typing', s.typingSounds, (v) => set(s.copyWith(typingSounds: v)),
                       enabled: s.soundEnabled),
                   _Toggle('Warning sounds', s.warningSounds, (v) => set(s.copyWith(warningSounds: v)),
-                      subtitle: 'Beeps, alarms, transfer noise and siren', enabled: s.soundEnabled),
+                      subtitle: 'Startup tone, beeps, alarm, transfer noise and countdown', enabled: s.soundEnabled),
                   _Toggle('Robotic voice', s.robotVoice, (v) => set(s.copyWith(robotVoice: v)),
                       subtitle: '"Your device has been compromised."', enabled: s.soundEnabled),
                 ],
@@ -130,7 +164,7 @@ class SettingsScreen extends StatelessWidget {
               _Card(
                 children: [
                   _Toggle('Reduce motion', s.reduceMotion, (v) => set(s.copyWith(reduceMotion: v)),
-                      subtitle: 'Turns off shake, glitches, confetti and looping animations'),
+                      subtitle: 'Turns off shake, glitches, typing and looping animations'),
                   _Toggle('Disable flashing transitions', s.disableFlashing,
                       (v) => set(s.copyWith(disableFlashing: v)),
                       subtitle: 'Warning borders and light sweeps stay still'),
@@ -139,21 +173,17 @@ class SettingsScreen extends StatelessWidget {
                       (v) => set(s.copyWith(largeTerminalText: v))),
                 ],
               ),
-              const _Header('PRANK BEHAVIOR'),
+              const _Header('BEHAVIOR'),
               _Card(
                 children: [
-                  _Toggle('Show reveal shortcut', s.showRevealShortcut,
-                      (v) => set(s.copyWith(showRevealShortcut: v)),
-                      subtitle: 'A small "Reveal" button during the prank. '
-                          'Triple-tapping the stage title always reveals too'),
                   _Toggle('Automatically reveal when the countdown ends', s.autoReveal,
                       (v) => set(s.copyWith(autoReveal: v)),
                       subtitle: s.autoReveal
-                          ? 'Reveals the moment the timer hits 00:00'
+                          ? 'Shows the awareness screen the moment the timer hits 00:00'
                           : 'Holds at 00:00 for a few seconds, then reveals anyway'),
                   _Toggle('Exit confirmation', s.exitConfirmation,
                       (v) => set(s.copyWith(exitConfirmation: v)),
-                      subtitle: 'Ask "End the simulation?" before exiting'),
+                      subtitle: 'Ask "End the simulation?" when ✕ or back is pressed'),
                 ],
               ),
               const _Header('ALWAYS ON'),
@@ -162,10 +192,12 @@ class SettingsScreen extends StatelessWidget {
                   Padding(
                     padding: EdgeInsets.all(16),
                     child: _Hint(
-                      '• The reveal always appears when the prank ends.\n'
-                      '• EXIT and the back gesture work on every screen.\n'
+                      '• The awareness screen always appears when the countdown ends.\n'
+                      '• Shake, ✕, the back gesture, or triple-tapping the stage title '
+                      'end the simulation at any time.\n'
+                      '• Home, recents and all system controls keep working.\n'
                       '• Nothing on the device is read, locked, encrypted or sent anywhere.\n'
-                      '• The camera is never used during the prank.',
+                      '• The camera is never used during the simulation.',
                     ),
                   ),
                 ],

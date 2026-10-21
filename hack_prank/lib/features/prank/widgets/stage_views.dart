@@ -13,7 +13,8 @@ import 'simulated_file_list.dart';
 import 'terminal_panel.dart';
 import 'warning_banner.dart';
 
-/// Picks the view for the controller's current breach stage.
+/// Picks the view for the controller's current breach stage (1-4). The
+/// countdown (stage 5) is the separate `RansomScreen`.
 class StageView extends StatelessWidget {
   const StageView({super.key, required this.controller, required this.fx});
 
@@ -24,16 +25,15 @@ class StageView extends StatelessWidget {
   Widget build(BuildContext context) {
     final p = controller.stageProgress;
     return switch (controller.stage) {
-      PrankStage.tracing => _TracingView(controller: controller, progress: p, fx: fx),
+      PrankStage.activity => _ActivityView(controller: controller, progress: p, fx: fx),
       PrankStage.warning => _WarningView(progress: p, fx: fx),
       PrankStage.extracting => _ExtractingView(progress: p, fx: fx),
-      PrankStage.simulatedTracking => _TrackingView(progress: p, fx: fx),
-      PrankStage.breachComplete => _BreachCompleteView(progress: p, fx: fx),
       _ => _InitializingView(controller: controller, progress: p, fx: fx),
     };
   }
 }
 
+/// Stage 1 — initialization.
 class _InitializingView extends StatelessWidget {
   const _InitializingView({required this.controller, required this.progress, required this.fx});
 
@@ -50,7 +50,7 @@ class _InitializingView extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _StatusRow(
-          label: progress < 0.85 ? 'CONNECTION: NEGOTIATING' : 'CONNECTION: ESTABLISHED',
+          label: progress < 0.85 ? 'SESSION: NEGOTIATING' : 'SESSION: ESTABLISHED',
           color: AppColors.hackerGreen,
           pulse: fx.motion,
         ),
@@ -65,18 +65,9 @@ class _InitializingView extends StatelessWidget {
           footer: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              for (final line in hex.take(hexVisible))
-                Text(
-                  '0x$line',
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.terminal(
-                    color: AppColors.secondaryGreen.withValues(alpha: 0.7),
-                    size: 11,
-                    large: fx.largeText,
-                  ),
-                ),
+              for (final line in hex.take(hexVisible)) _HexLine(line, large: fx.largeText),
               const SizedBox(height: 12),
-              HackerProgressBar(value: progress, label: 'SCANNING TARGET SYSTEM'),
+              HackerProgressBar(value: progress, label: 'SCANNING ENVIRONMENT'),
             ],
           ),
         ),
@@ -85,8 +76,9 @@ class _InitializingView extends StatelessWidget {
   }
 }
 
-class _TracingView extends StatelessWidget {
-  const _TracingView({required this.controller, required this.progress, required this.fx});
+/// Stage 2 — simulated remote activity.
+class _ActivityView extends StatelessWidget {
+  const _ActivityView({required this.controller, required this.progress, required this.fx});
 
   final PrankController controller;
   final double progress;
@@ -94,21 +86,26 @@ class _TracingView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final found = progress > 0.62;
+    final hex = controller.session.hexLines(2, length: 28);
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         TerminalPanel(
-          lines: PrankConstants.tracingLines,
+          lines: PrankConstants.activityLines,
           progress: progress,
-          typingPortion: 0.65,
+          typingPortion: 0.6,
           typewriter: fx.typewriter,
           blinkCursor: fx.motion,
           highContrast: fx.highContrast,
           largeText: fx.largeText,
+          footer: HackerProgressBar(
+            // Climbs to the 47% the terminal reports.
+            value: 0.47 * Curves.easeOut.transform(progress),
+            label: 'DATA TRANSFER',
+          ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 14),
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
@@ -116,25 +113,39 @@ class _TracingView extends StatelessWidget {
             borderRadius: BorderRadius.circular(14),
             border: Border.all(color: AppColors.hackerGreen.withValues(alpha: 0.4)),
           ),
-          child: NetworkAnimation(
-            progress: progress,
-            hops: controller.session.routeHops,
-            animate: fx.motion,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              NetworkAnimation(
+                progress: progress,
+                hops: controller.session.routeHops,
+                animate: fx.motion,
+                height: 170,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                'REMOTE NODE: ${controller.session.remoteAddress}',
+                textAlign: TextAlign.center,
+                style: AppText.terminal(color: AppColors.hackerGreen, size: 13, large: fx.largeText),
+              ),
+              for (final line in hex) _HexLine(line, large: fx.largeText),
+            ],
           ),
         ),
         const SizedBox(height: 14),
-        AnimatedOpacity(
-          opacity: found ? 1 : 0.25,
-          duration: const Duration(milliseconds: 400),
-          child: Text(
-            'SIMULATED TRACE: ${found ? controller.session.traceAddress : '···.···.···.···'}',
-            textAlign: TextAlign.center,
-            style: AppText.terminal(
-              color: AppColors.hackerGreen,
-              size: 18,
-              large: fx.largeText,
-              weight: FontWeight.w700,
-            ).copyWith(shadows: AppText.glow(AppColors.hackerGreen, strength: 0.6)),
+        Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: AppColors.terminal.withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: AppColors.hackerGreen.withValues(alpha: 0.3)),
+          ),
+          child: SimulatedFileList(
+            files: PrankConstants.simulatedSystemFiles,
+            progress: progress,
+            counterLabel: 'SYSTEM FILES ANALYZED',
+            largeText: fx.largeText,
+            highContrast: fx.highContrast,
           ),
         ),
       ],
@@ -142,6 +153,7 @@ class _TracingView extends StatelessWidget {
   }
 }
 
+/// Stage 3 — the dramatic warning.
 class _WarningView extends StatelessWidget {
   const _WarningView({required this.progress, required this.fx});
 
@@ -156,12 +168,17 @@ class _WarningView extends StatelessWidget {
       children: [
         PulsingIcon(icon: Icons.gpp_bad_outlined, color: AppColors.danger, animate: fx.motion),
         const SizedBox(height: 16),
-        WarningBanner(text: PrankConstants.breachBanner, flashing: fx.flashing),
+        WarningBanner(
+          text: PrankConstants.alertTitle,
+          subtitle: PrankConstants.alertSubtitle,
+          flashing: fx.flashing,
+          glitch: fx.glitch,
+        ),
         const SizedBox(height: 18),
         TerminalPanel(
           lines: const [
             'INTRUSION SIGNATURE MATCHED',
-            'FIREWALL STATUS: BYPASSED (SIMULATED)',
+            'FIREWALL STATUS: BYPASSED',
             'SECURITY LAYERS DISABLED: 3/3',
           ],
           progress: progress,
@@ -178,6 +195,8 @@ class _WarningView extends StatelessWidget {
   }
 }
 
+/// Stage 4 — fictional file extraction. The file list is a constant; the
+/// device's storage is never read.
 class _ExtractingView extends StatelessWidget {
   const _ExtractingView({required this.progress, required this.fx});
 
@@ -190,10 +209,15 @@ class _ExtractingView extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          'EXTRACTING DATA PACKETS',
-          textAlign: TextAlign.center,
-          style: AppText.display(size: 24, color: AppColors.danger, shadows: AppText.glow(AppColors.danger, strength: 0.6)),
+        GlitchText(
+          'EXTRACTING DATA',
+          enabled: fx.glitch,
+          style: AppText.display(
+            size: 28,
+            color: AppColors.danger,
+            letterSpacing: 3,
+            shadows: AppText.glow(AppColors.danger, strength: 0.6),
+          ),
         ),
         const SizedBox(height: 14),
         Container(
@@ -212,7 +236,7 @@ class _ExtractingView extends StatelessWidget {
         const SizedBox(height: 16),
         HackerProgressBar(
           value: progress,
-          label: 'UPLOADING TO REMOTE HOST (SIMULATED)',
+          label: 'UPLOADING TO REMOTE HOST',
           color: AppColors.warning,
         ),
       ],
@@ -220,98 +244,23 @@ class _ExtractingView extends StatelessWidget {
   }
 }
 
-class _TrackingView extends StatelessWidget {
-  const _TrackingView({required this.progress, required this.fx});
+class _HexLine extends StatelessWidget {
+  const _HexLine(this.line, {required this.large});
 
-  final double progress;
-  final EffectFlags fx;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Row(
-          children: [
-            Expanded(child: _DeviceTile(icon: Icons.videocam_outlined, label: 'CAMERA', animate: fx.motion)),
-            const SizedBox(width: 10),
-            Expanded(child: _DeviceTile(icon: Icons.mic_none_rounded, label: 'MICROPHONE', animate: fx.motion)),
-            const SizedBox(width: 10),
-            Expanded(child: _DeviceTile(icon: Icons.flashlight_on_outlined, label: 'FLASHLIGHT', animate: fx.motion)),
-          ],
-        ),
-        const SizedBox(height: 16),
-        TerminalPanel(
-          lines: PrankConstants.trackingLines,
-          progress: progress,
-          typingPortion: 0.75,
-          accent: AppColors.warning,
-          textColor: const Color(0xFFFFC27A),
-          typewriter: fx.typewriter,
-          blinkCursor: fx.motion,
-          highContrast: fx.highContrast,
-          largeText: fx.largeText,
-        ),
-        const SizedBox(height: 16),
-        HackerProgressBar(
-          value: 0.87 * Curves.easeOut.transform(progress),
-          label: 'DATA TRANSFER',
-          color: AppColors.warning,
-        ),
-        const SizedBox(height: 14),
-        WarningBanner(
-          text: 'REMOTE SESSION ACTIVE',
-          color: AppColors.warning,
-          icon: Icons.satellite_alt_outlined,
-          flashing: fx.flashing,
-        ),
-      ],
-    );
-  }
-}
-
-class _BreachCompleteView extends StatelessWidget {
-  const _BreachCompleteView({required this.progress, required this.fx});
-
-  final double progress;
-  final EffectFlags fx;
+  final String line;
+  final bool large;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        GlitchText(
-          'COMPROMISED',
-          enabled: fx.glitch,
-          style: AppText.display(
-            size: 46,
-            color: AppColors.danger,
-            letterSpacing: 6,
-            shadows: AppText.glow(AppColors.danger),
-          ),
-        ),
-        const SizedBox(height: 18),
-        TerminalPanel(
-          lines: PrankConstants.breachCompleteLines,
-          progress: progress,
-          typingPortion: 0.6,
-          accent: AppColors.danger,
-          textColor: const Color(0xFFFF8A9B),
-          typewriter: fx.typewriter,
-          blinkCursor: fx.motion,
-          highContrast: fx.highContrast,
-          largeText: fx.largeText,
-        ),
-        const SizedBox(height: 16),
-        HackerProgressBar(
-          value: (progress / 0.8).clamp(0.0, 1.0),
-          label: 'FINALIZING OPERATION',
-          color: AppColors.danger,
-        ),
-      ],
+    return Text(
+      '0x$line',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: AppText.terminal(
+        color: AppColors.secondaryGreen.withValues(alpha: 0.7),
+        size: 11,
+        large: large,
+      ),
     );
   }
 }
@@ -334,52 +283,6 @@ class _StatusRow extends StatelessWidget {
           child: Text(label, style: AppText.terminal(color: color, size: 13)),
         ),
       ],
-    );
-  }
-}
-
-class _DeviceTile extends StatelessWidget {
-  const _DeviceTile({required this.icon, required this.label, required this.animate});
-
-  final IconData icon;
-  final String label;
-  final bool animate;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 6),
-      decoration: BoxDecoration(
-        color: AppColors.terminal,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.warning.withValues(alpha: 0.55)),
-      ),
-      child: Column(
-        children: [
-          SizedBox(
-            height: 40,
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Icon(icon, color: AppColors.warning, size: 32),
-                // An abstract "scanning" overlay; no real device is used.
-                Positioned.fill(child: LightSweep(trigger: label, enabled: animate, color: AppColors.warning)),
-              ],
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: AppText.terminal(color: AppColors.warning, size: 11),
-          ),
-          Text(
-            'SIMULATED',
-            style: AppText.terminal(color: AppColors.textSecondary, size: 10),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -449,4 +352,3 @@ class _PulsingIconState extends State<PulsingIcon>
     );
   }
 }
-

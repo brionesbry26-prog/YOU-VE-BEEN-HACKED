@@ -2,89 +2,81 @@ import 'dart:math';
 
 import '../../core/constants/prank_constants.dart';
 
-/// States of the prank lifecycle, in order.
+/// States of the simulation lifecycle, in order.
 enum PrankStage {
   idle,
+
+  /// The innocent "I Love You" title card.
+  intro,
   initializing,
-  tracing,
+  activity,
   warning,
   extracting,
-  simulatedTracking,
-  breachComplete,
+
+  /// The ransom-inspired countdown ("SYSTEM STATUS: COMPROMISED").
   ransom,
   revealed,
   disposed;
 
-  /// The six timed breach stages, in playback order.
-  static const sequence = [
-    initializing,
-    tracing,
-    warning,
-    extracting,
-    simulatedTracking,
-    breachComplete,
-  ];
+  /// The timed stages that play before the countdown, in order.
+  static const sequence = [intro, initializing, activity, warning, extracting];
+
+  /// The five numbered stages shown in the status bar.
+  static const numbered = [initializing, activity, warning, extracting, ransom];
 
   bool get isSequence => sequence.contains(this);
 
   /// Stages after which nothing else can happen.
   bool get isTerminal => this == revealed || this == disposed;
 
-  /// 1-based position in the breach sequence, or null outside it.
-  int? get sequenceNumber => isSequence ? sequence.indexOf(this) + 1 : null;
+  /// 1-based position among the [numbered] stages, or null outside them.
+  int? get stageNumber => numbered.contains(this) ? numbered.indexOf(this) + 1 : null;
 
   String get title => switch (this) {
-    idle => 'STANDBY',
-    initializing => 'INITIALIZING SYSTEM',
-    tracing => 'NETWORK TRACE',
-    warning => 'BREACH WARNING',
-    extracting => 'FILE EXTRACTION',
-    simulatedTracking => 'DEVICE TRACKING',
-    breachComplete => 'BREACH COMPLETE',
-    ransom => 'ACCESS LOCKED',
-    revealed => 'GOTCHA',
+    idle => '',
+    intro => PrankConstants.appTitle,
+    initializing => 'INITIALIZATION',
+    activity => 'REMOTE ACTIVITY',
+    warning => 'SECURITY ALERT',
+    extracting => 'DATA EXTRACTION',
+    ransom => 'SYSTEM COMPROMISED',
+    revealed => 'AWARENESS',
     disposed => 'ENDED',
   };
 }
 
-/// Maps elapsed time to stages for one prank run.
+/// Maps elapsed time to stages for one run.
 ///
-/// The total duration chosen in settings is split so that the ransom countdown
-/// gets [PrankConstants.ransomShare] of it and the six breach stages share the
-/// rest in proportion to [PrankConstants.stageWeights]. Every boundary is a
-/// whole number of ticks, so stage changes are fully deterministic.
+/// The stages before the countdown have fixed lengths
+/// ([defaultStageDurations]); the countdown length comes from settings.
+/// Every boundary is a whole number of ticks, so stage changes are fully
+/// deterministic.
 class PrankTimeline {
-  PrankTimeline._(this.stageDurations, this.ransomDuration, this.tick);
-
-  factory PrankTimeline.forTotal(
-    Duration total, {
-    Duration tick = PrankConstants.tickInterval,
-  }) {
-    final tickMs = tick.inMilliseconds;
-    final totalTicks = (total.inMilliseconds / tickMs).round();
-    final ransomTicks = max(1, (totalTicks * PrankConstants.ransomShare).round());
-    final sequenceTicks = totalTicks - ransomTicks;
-    const weights = PrankConstants.stageWeights;
-    final weightSum = weights.reduce((a, b) => a + b);
-
-    final durations = <PrankStage, Duration>{};
-    var used = 0;
-    for (var i = 0; i < PrankStage.sequence.length; i++) {
-      final isLast = i == PrankStage.sequence.length - 1;
-      final ticks = isLast
-          ? sequenceTicks - used
-          : max(1, (sequenceTicks * weights[i] / weightSum).round());
-      used += ticks;
-      durations[PrankStage.sequence[i]] = Duration(
-        milliseconds: ticks * tickMs,
-      );
-    }
-    return PrankTimeline._(
-      Map.unmodifiable(durations),
-      Duration(milliseconds: ransomTicks * tickMs),
-      tick,
+  PrankTimeline({
+    Map<PrankStage, Duration> stageDurations = defaultStageDurations,
+    required this.ransomDuration,
+    this.tick = PrankConstants.tickInterval,
+  }) : stageDurations = Map.unmodifiable(stageDurations) {
+    assert(
+      PrankStage.sequence.every((s) => (this.stageDurations[s] ?? Duration.zero) > Duration.zero),
+      'Every sequence stage needs a duration.',
+    );
+    assert(
+      [...this.stageDurations.values, ransomDuration]
+          .every((d) => d.inMicroseconds % tick.inMicroseconds == 0),
+      'Stage boundaries must fall on ticks.',
     );
   }
+
+  /// Stage lengths from the design brief: a 1-2 second title card, then the
+  /// four breach stages.
+  static const defaultStageDurations = {
+    PrankStage.intro: Duration(milliseconds: 2200),
+    PrankStage.initializing: Duration(seconds: 4),
+    PrankStage.activity: Duration(seconds: 5),
+    PrankStage.warning: Duration(seconds: 4),
+    PrankStage.extracting: Duration(seconds: 5),
+  };
 
   final Map<PrankStage, Duration> stageDurations;
   final Duration ransomDuration;
@@ -93,7 +85,7 @@ class PrankTimeline {
   Duration get sequenceDuration =>
       stageDurations.values.fold(Duration.zero, (a, b) => a + b);
 
-  /// Time from the start of the prank until the guaranteed reveal.
+  /// Time from the start until the countdown hits zero.
   Duration get total => sequenceDuration + ransomDuration;
 
   Duration durationOf(PrankStage stage) {
@@ -123,28 +115,28 @@ class PrankTimeline {
   }
 }
 
-/// Fictional values generated locally for one prank run.
+/// Fictional values generated locally for one run.
 class PrankSession {
   PrankSession({
-    required this.traceAddress,
+    required this.remoteAddress,
     required this.routeHops,
     required this.hexSeed,
   });
 
-  /// Builds a session from [random]. The address always comes from a range
-  /// reserved for documentation (RFC 5737), so it can never be a real device.
+  /// Builds a session from [random]. Addresses always come from ranges
+  /// reserved for documentation (RFC 5737), so they can never be real.
   factory PrankSession.generate(Random random) {
     const nets = PrankConstants.documentationNetworks;
     String address() =>
         '${nets[random.nextInt(nets.length)]}.${1 + random.nextInt(254)}';
     return PrankSession(
-      traceAddress: address(),
+      remoteAddress: address(),
       routeHops: List.generate(5, (_) => address()),
       hexSeed: random.nextInt(1 << 31),
     );
   }
 
-  final String traceAddress;
+  final String remoteAddress;
   final List<String> routeHops;
   final int hexSeed;
 

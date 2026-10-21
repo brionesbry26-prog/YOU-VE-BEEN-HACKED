@@ -27,7 +27,7 @@ class ExitConfirmationDialog extends StatelessWidget {
         style: AppText.display(size: 26),
       ),
       content: Text(
-        'Nothing on this device was touched. Exiting simply stops the show.',
+        'This is only a simulation. Nothing on this device was touched.',
         textAlign: TextAlign.center,
         style: AppText.terminal(color: AppColors.textSecondary),
       ),

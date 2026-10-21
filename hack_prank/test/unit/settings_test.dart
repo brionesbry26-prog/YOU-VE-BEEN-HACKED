@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:hack_prank/core/services/preferences_service.dart';
+import 'package:hack_prank/core/services/shake_detector.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -8,9 +9,9 @@ void main() {
   test('loads defaults on first launch', () async {
     final c = await SettingsController.load();
     expect(c.value, const PrankSettings());
-    expect(c.value.durationSeconds, 30);
+    expect(c.value.countdownSeconds, 30);
     expect(c.value.autoReveal, isTrue);
-    expect(c.value.showRevealShortcut, isTrue);
+    expect(c.value.shakeSensitivity, ShakeSensitivity.medium);
   });
 
   test('changes apply immediately and persist across restarts', () async {
@@ -20,7 +21,8 @@ void main() {
 
     await c.update(
       c.value.copyWith(
-        durationSeconds: 45,
+        countdownSeconds: 45,
+        shakeSensitivity: ShakeSensitivity.high,
         vibration: false,
         robotVoice: false,
         masterVolume: 0.3,
@@ -29,11 +31,12 @@ void main() {
       ),
     );
     expect(notified, 1);
-    expect(c.value.durationSeconds, 45);
+    expect(c.value.countdownSeconds, 45);
 
     // Simulate an app restart by loading a fresh controller.
     final restarted = await SettingsController.load();
-    expect(restarted.value.durationSeconds, 45);
+    expect(restarted.value.countdownSeconds, 45);
+    expect(restarted.value.shakeSensitivity, ShakeSensitivity.high);
     expect(restarted.value.vibration, isFalse);
     expect(restarted.value.robotVoice, isFalse);
     expect(restarted.value.masterVolume, 0.3);
@@ -52,17 +55,19 @@ void main() {
 
   test('invalid stored values fall back to safe defaults', () async {
     SharedPreferences.setMockInitialValues({
-      'duration_seconds': 999,
+      'countdown_seconds': 999,
       'master_volume': 7.5,
+      'shake_sensitivity': 'extreme',
     });
     final c = await SettingsController.load();
-    expect(c.value.durationSeconds, 30);
+    expect(c.value.countdownSeconds, 30);
     expect(c.value.masterVolume, 1.0);
+    expect(c.value.shakeSensitivity, ShakeSensitivity.medium);
   });
 
   test('reset restores and persists defaults', () async {
     final c = await SettingsController.load();
-    await c.update(c.value.copyWith(durationSeconds: 60, confetti: false));
+    await c.update(c.value.copyWith(countdownSeconds: 60, shakeSensitivity: ShakeSensitivity.low));
     await c.reset();
     final restarted = await SettingsController.load();
     expect(restarted.value, const PrankSettings());

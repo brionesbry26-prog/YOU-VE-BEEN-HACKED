@@ -2,15 +2,19 @@ import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/prank_constants.dart';
+import 'shake_detector.dart';
 
 /// Every user-configurable option. Immutable; use [copyWith] to change it.
 ///
 /// There is deliberately no option that disables the reveal or removes the
 /// exit controls: those are always available.
+///
+/// [countdownSeconds] is the length of the final countdown; the stages before
+/// it have fixed lengths (see `PrankTimeline`).
 @immutable
 class PrankSettings {
   const PrankSettings({
-    this.durationSeconds = PrankConstants.defaultDurationSeconds,
+    this.countdownSeconds = PrankConstants.defaultCountdownSeconds,
     this.terminalAnimations = true,
     this.screenShake = true,
     this.glitchEffects = true,
@@ -20,17 +24,16 @@ class PrankSettings {
     this.warningSounds = true,
     this.robotVoice = true,
     this.vibration = true,
-    this.confetti = true,
     this.reduceMotion = false,
     this.disableFlashing = false,
     this.highContrast = false,
     this.largeTerminalText = false,
-    this.showRevealShortcut = true,
+    this.shakeSensitivity = ShakeSensitivity.medium,
     this.autoReveal = true,
     this.exitConfirmation = true,
   });
 
-  final int durationSeconds;
+  final int countdownSeconds;
   final bool terminalAnimations;
   final bool screenShake;
   final bool glitchEffects;
@@ -40,19 +43,18 @@ class PrankSettings {
   final bool warningSounds;
   final bool robotVoice;
   final bool vibration;
-  final bool confetti;
   final bool reduceMotion;
   final bool disableFlashing;
   final bool highContrast;
   final bool largeTerminalText;
-  final bool showRevealShortcut;
+  final ShakeSensitivity shakeSensitivity;
   final bool autoReveal;
   final bool exitConfirmation;
 
-  Duration get duration => Duration(seconds: durationSeconds);
+  Duration get countdown => Duration(seconds: countdownSeconds);
 
   PrankSettings copyWith({
-    int? durationSeconds,
+    int? countdownSeconds,
     bool? terminalAnimations,
     bool? screenShake,
     bool? glitchEffects,
@@ -62,17 +64,16 @@ class PrankSettings {
     bool? warningSounds,
     bool? robotVoice,
     bool? vibration,
-    bool? confetti,
     bool? reduceMotion,
     bool? disableFlashing,
     bool? highContrast,
     bool? largeTerminalText,
-    bool? showRevealShortcut,
+    ShakeSensitivity? shakeSensitivity,
     bool? autoReveal,
     bool? exitConfirmation,
   }) {
     return PrankSettings(
-      durationSeconds: durationSeconds ?? this.durationSeconds,
+      countdownSeconds: countdownSeconds ?? this.countdownSeconds,
       terminalAnimations: terminalAnimations ?? this.terminalAnimations,
       screenShake: screenShake ?? this.screenShake,
       glitchEffects: glitchEffects ?? this.glitchEffects,
@@ -82,19 +83,18 @@ class PrankSettings {
       warningSounds: warningSounds ?? this.warningSounds,
       robotVoice: robotVoice ?? this.robotVoice,
       vibration: vibration ?? this.vibration,
-      confetti: confetti ?? this.confetti,
       reduceMotion: reduceMotion ?? this.reduceMotion,
       disableFlashing: disableFlashing ?? this.disableFlashing,
       highContrast: highContrast ?? this.highContrast,
       largeTerminalText: largeTerminalText ?? this.largeTerminalText,
-      showRevealShortcut: showRevealShortcut ?? this.showRevealShortcut,
+      shakeSensitivity: shakeSensitivity ?? this.shakeSensitivity,
       autoReveal: autoReveal ?? this.autoReveal,
       exitConfirmation: exitConfirmation ?? this.exitConfirmation,
     );
   }
 
   Map<String, Object> toMap() => {
-    _Keys.duration: durationSeconds,
+    _Keys.countdown: countdownSeconds,
     _Keys.terminalAnimations: terminalAnimations,
     _Keys.screenShake: screenShake,
     _Keys.glitchEffects: glitchEffects,
@@ -104,12 +104,11 @@ class PrankSettings {
     _Keys.warningSounds: warningSounds,
     _Keys.robotVoice: robotVoice,
     _Keys.vibration: vibration,
-    _Keys.confetti: confetti,
     _Keys.reduceMotion: reduceMotion,
     _Keys.disableFlashing: disableFlashing,
     _Keys.highContrast: highContrast,
     _Keys.largeTerminalText: largeTerminalText,
-    _Keys.showRevealShortcut: showRevealShortcut,
+    _Keys.shakeSensitivity: shakeSensitivity.name,
     _Keys.autoReveal: autoReveal,
     _Keys.exitConfirmation: exitConfirmation,
   };
@@ -119,12 +118,13 @@ class PrankSettings {
     const d = PrankSettings();
     bool b(String key, bool fallback) => prefs.getBool(key) ?? fallback;
 
-    final duration = prefs.getInt(_Keys.duration);
+    final countdown = prefs.getInt(_Keys.countdown);
     final volume = prefs.getDouble(_Keys.masterVolume);
+    final sensitivity = prefs.getString(_Keys.shakeSensitivity);
     return PrankSettings(
-      durationSeconds: PrankConstants.allowedDurations.contains(duration)
-          ? duration!
-          : d.durationSeconds,
+      countdownSeconds: PrankConstants.allowedCountdowns.contains(countdown)
+          ? countdown!
+          : d.countdownSeconds,
       terminalAnimations: b(_Keys.terminalAnimations, d.terminalAnimations),
       screenShake: b(_Keys.screenShake, d.screenShake),
       glitchEffects: b(_Keys.glitchEffects, d.glitchEffects),
@@ -134,12 +134,14 @@ class PrankSettings {
       warningSounds: b(_Keys.warningSounds, d.warningSounds),
       robotVoice: b(_Keys.robotVoice, d.robotVoice),
       vibration: b(_Keys.vibration, d.vibration),
-      confetti: b(_Keys.confetti, d.confetti),
       reduceMotion: b(_Keys.reduceMotion, d.reduceMotion),
       disableFlashing: b(_Keys.disableFlashing, d.disableFlashing),
       highContrast: b(_Keys.highContrast, d.highContrast),
       largeTerminalText: b(_Keys.largeTerminalText, d.largeTerminalText),
-      showRevealShortcut: b(_Keys.showRevealShortcut, d.showRevealShortcut),
+      shakeSensitivity: ShakeSensitivity.values.firstWhere(
+        (v) => v.name == sensitivity,
+        orElse: () => d.shakeSensitivity,
+      ),
       autoReveal: b(_Keys.autoReveal, d.autoReveal),
       exitConfirmation: b(_Keys.exitConfirmation, d.exitConfirmation),
     );
@@ -154,7 +156,7 @@ class PrankSettings {
 }
 
 abstract final class _Keys {
-  static const duration = 'duration_seconds';
+  static const countdown = 'countdown_seconds';
   static const terminalAnimations = 'terminal_animations';
   static const screenShake = 'screen_shake';
   static const glitchEffects = 'glitch_effects';
@@ -164,12 +166,11 @@ abstract final class _Keys {
   static const warningSounds = 'warning_sounds';
   static const robotVoice = 'robot_voice';
   static const vibration = 'vibration';
-  static const confetti = 'confetti';
   static const reduceMotion = 'reduce_motion';
   static const disableFlashing = 'disable_flashing';
   static const highContrast = 'high_contrast';
   static const largeTerminalText = 'large_terminal_text';
-  static const showRevealShortcut = 'show_reveal_shortcut';
+  static const shakeSensitivity = 'shake_sensitivity';
   static const autoReveal = 'auto_reveal';
   static const exitConfirmation = 'exit_confirmation';
 }
@@ -216,6 +217,8 @@ class SettingsController extends ChangeNotifier {
         final value = entry.value;
         if (value is bool) {
           await prefs.setBool(entry.key, value);
+        } else if (value is String) {
+          await prefs.setString(entry.key, value);
         } else if (value is int) {
           await prefs.setInt(entry.key, value);
         } else if (value is double) {

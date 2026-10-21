@@ -95,13 +95,49 @@ def key_click():
 
 
 def typing():
-    # Loopable ~1.8s of irregular mechanical key presses.
+    # Loopable ~1.8s of irregular mechanical key presses over a faint
+    # electronic noise bed (the "background noise" of stage 1).
     length = 1.8
     buf = silence(length)
     at = 0.02
     while at < length - 0.06:
         place(buf, key_click() * rng.uniform(0.55, 1.0), at)
         at += rng.uniform(0.06, 0.16)
+    t = t_axis(length)
+    hum = 0.05 * np.sin(2 * np.pi * 60 * t) + 0.03 * np.sin(2 * np.pi * 120 * t)
+    hiss = lowpass(rng.uniform(-1, 1, len(buf)), 0.05) * 0.12
+    return buf + hum + hiss
+
+
+def startup():
+    # Soft, warm two-note pad: innocent on purpose.
+    t = t_axis(1.4)
+    pad = (np.sin(2 * np.pi * 261.63 * t) + 0.6 * np.sin(2 * np.pi * 392.0 * t)
+           + 0.25 * np.sin(2 * np.pi * 523.25 * t))
+    env = np.minimum(t / 0.35, 1.0) * np.exp(-np.maximum(t - 0.35, 0) * 2.2)
+    return pad * env
+
+
+def heartbeat():
+    # Exactly 1.0s so that looping it ticks once per countdown second:
+    # a low "lub-dub" heartbeat plus a quiet clock tick.
+    buf = silence(1.0)
+
+    def thump(freq, dur, gain):
+        t = t_axis(dur)
+        return np.sin(2 * np.pi * freq * t) * np.exp(-t * 28) * gain
+
+    place(buf, thump(55, 0.18, 1.0), 0.0)
+    place(buf, thump(48, 0.18, 0.75), 0.22)
+    place(buf, tone(2400, 0.012, release=0.008) * 0.25, 0.5)
+    return buf
+
+
+def reveal():
+    # A calm, resolving two-note tone: serious, not celebratory.
+    buf = silence(1.8)
+    place(buf, tone(523.25, 1.2, attack=0.03, release=0.9) * 0.7, 0.0)
+    place(buf, tone(783.99, 1.4, attack=0.03, release=1.1) * 0.55, 0.18)
     return buf
 
 
@@ -137,21 +173,6 @@ def transfer():
     return buf + hiss
 
 
-def siren():
-    t = t_axis(2.2)
-    freq = 700 + 350 * np.sin(2 * np.pi * 1.1 * t)
-    return tone(freq, 2.2, "saw", attack=0.08, release=0.3)
-
-
-def celebrate():
-    buf = silence(1.6)
-    notes = [523.25, 659.25, 783.99, 1046.5]
-    for i, f in enumerate(notes):
-        place(buf, tone(f, 0.5, release=0.35) * 0.8, i * 0.09)
-    place(buf, (tone(1046.5, 0.9, release=0.7) + tone(1318.5, 0.9, release=0.7) * 0.6), 0.4)
-    for _ in range(14):
-        place(buf, tone(rng.uniform(2500, 4200), 0.05, release=0.04) * 0.25, rng.uniform(0.4, 1.4))
-    return buf
 
 
 def voice():
@@ -183,14 +204,15 @@ def voice():
 
 def main():
     os.makedirs(OUT_DIR, exist_ok=True)
+    write("startup.wav", startup(), -12)
     write("typing.wav", typing(), -10)
     write("beep.wav", beep(), -9)
     write("connect.wav", connect(), -8)
     write("alarm.wav", alarm(), -8)
     write("transfer.wav", transfer(), -12)
-    write("siren.wav", siren(), -10)
+    write("countdown.wav", heartbeat(), -8)
     write("voice.wav", voice(), -4)
-    write("celebrate.wav", celebrate(), -6)
+    write("reveal.wav", reveal(), -12)
 
 
 if __name__ == "__main__":

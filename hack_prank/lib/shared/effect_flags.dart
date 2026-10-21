@@ -12,7 +12,6 @@ class EffectFlags {
     required this.shake,
     required this.glitch,
     required this.flashing,
-    required this.confetti,
     required this.highContrast,
     required this.largeText,
   });
@@ -25,7 +24,6 @@ class EffectFlags {
       shake: motion && s.screenShake,
       glitch: motion && s.glitchEffects,
       flashing: motion && !s.disableFlashing,
-      confetti: motion && s.confetti,
       highContrast: s.highContrast,
       largeText: s.largeTerminalText,
     );
@@ -46,7 +44,6 @@ class EffectFlags {
 
   /// Brief colour pulses on warning borders. Never a full-screen strobe.
   final bool flashing;
-  final bool confetti;
   final bool highContrast;
   final bool largeText;
 }

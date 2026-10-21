@@ -3,8 +3,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Static checks that keep the prank harmless: no data-access permissions,
-/// no networking or data-collection packages, and the camera confined to the
-/// opt-in reaction screen.
+/// no networking or data-collection packages, the camera confined to the
+/// opt-in reaction screen and the accelerometer to shake detection.
 void main() {
   final libFiles = Directory('lib')
       .listSync(recursive: true)
@@ -81,6 +81,23 @@ void main() {
         expect(f.path.replaceAll(r'\', '/'), endsWith('features/reaction/reaction_screen.dart'));
       }
     }
+  });
+
+  test('the accelerometer is only used by the shake detector service', () {
+    for (final f in libFiles) {
+      if (f.readAsStringSync().contains('package:sensors_plus/')) {
+        expect(f.path.replaceAll(r'\', '/'), endsWith('core/services/shake_service.dart'));
+      }
+    }
+  });
+
+  test('iOS declares a purpose for every sensor the app can touch', () {
+    final plist = File('ios/Runner/Info.plist').readAsStringSync();
+    for (final key in ['NSMotionUsageDescription', 'NSCameraUsageDescription']) {
+      expect(plist, contains(key));
+    }
+    expect(plist, isNot(contains('NSLocationWhenInUseUsageDescription')));
+    expect(plist, isNot(contains('NSContactsUsageDescription')));
   });
 
   test('audio comes only from bundled assets', () {

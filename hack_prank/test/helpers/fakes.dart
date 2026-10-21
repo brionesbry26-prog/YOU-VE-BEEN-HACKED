@@ -6,6 +6,7 @@ import 'package:hack_prank/core/services/audio_service.dart';
 import 'package:hack_prank/core/services/device_services.dart';
 import 'package:hack_prank/core/services/haptics_service.dart';
 import 'package:hack_prank/core/services/preferences_service.dart';
+import 'package:hack_prank/core/services/shake_service.dart';
 import 'package:hack_prank/features/prank/prank_controller.dart';
 import 'package:hack_prank/features/prank/prank_stage.dart';
 
@@ -94,12 +95,30 @@ class FakeWakelock implements WakelockService {
   }
 }
 
-class FakeShare implements ShareService {
-  final List<String> shared = [];
+/// Lets tests "shake the phone" on demand.
+class FakeShakeSensor implements ShakeSensor {
+  VoidCallback? _onShake;
+  int starts = 0;
 
   @override
-  Future<void> shareText(String text) async {
-    shared.add(text);
+  bool get isListening => _onShake != null;
+
+  @override
+  void start(VoidCallback onShake) {
+    _onShake = onShake;
+    starts++;
+  }
+
+  @override
+  void stop() => _onShake = null;
+
+  /// Simulates a deliberate shake. Returns false when nothing was listening
+  /// (so the shake had no effect).
+  bool shake() {
+    final callback = _onShake;
+    if (callback == null) return false;
+    callback();
+    return true;
   }
 }
 
@@ -114,14 +133,14 @@ class TestServices {
   late final FakeAudioService audio;
   late final FakeHaptics haptics;
   final FakeWakelock wakelock = FakeWakelock();
-  final FakeShare share = FakeShare();
+  final FakeShakeSensor shake = FakeShakeSensor();
 
   AppServices get services => AppServices(
     settings: settings,
     audio: audio,
     haptics: haptics,
     wakelock: wakelock,
-    share: share,
+    shake: shake,
   );
 }
 
@@ -152,11 +171,11 @@ void usePhoneScreen(WidgetTester tester) {
   addTearDown(tester.view.reset);
 }
 
-Future<void> pumpApp(WidgetTester tester, TestServices s) async {
+/// Launches the app. The simulation starts on the first frame, so fake time
+/// zero here is time zero of the run.
+Future<void> launchApp(WidgetTester tester, TestServices s) async {
   usePhoneScreen(tester);
   await tester.pumpWidget(HackPrankApp(services: s.services));
-  // Let the boot animation finish.
-  await pumpFor(tester, const Duration(seconds: 2));
 }
 
 /// Advances fake time in small steps so periodic timers and frames run.
@@ -174,7 +193,7 @@ Future<void> pumpFor(
 
 /// Settings with every optional effect turned off.
 const allEffectsOff = PrankSettings(
-  durationSeconds: 15,
+  countdownSeconds: 15,
   terminalAnimations: false,
   screenShake: false,
   glitchEffects: false,
@@ -183,7 +202,6 @@ const allEffectsOff = PrankSettings(
   warningSounds: false,
   robotVoice: false,
   vibration: false,
-  confetti: false,
   reduceMotion: true,
   disableFlashing: true,
 );

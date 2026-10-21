@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../shared/widgets/visual_effects.dart';
 
 /// A red warning banner whose border pulses slowly (well under three pulses
 /// per second). With [flashing] off the border is solid.
@@ -9,13 +10,19 @@ class WarningBanner extends StatefulWidget {
   const WarningBanner({
     super.key,
     required this.text,
+    this.subtitle,
     this.flashing = true,
+    this.glitch = false,
     this.color = AppColors.danger,
     this.icon = Icons.warning_amber_rounded,
   });
 
   final String text;
+  final String? subtitle;
   final bool flashing;
+
+  /// Adds the occasional RGB-split glitch to the headline.
+  final bool glitch;
   final Color color;
   final IconData icon;
 
@@ -63,7 +70,7 @@ class _WarningBannerState extends State<WarningBanner>
     final color = widget.color;
     return Semantics(
       liveRegion: true,
-      label: widget.text,
+      label: [widget.text, ?widget.subtitle].join('. '),
       excludeSemantics: true,
       child: AnimatedBuilder(
         animation: _pulse,
@@ -97,14 +104,28 @@ class _WarningBannerState extends State<WarningBanner>
             ),
           );
         },
-        child: Text(
-          widget.text,
-          textAlign: TextAlign.center,
-          style: AppText.display(
-            size: 24,
-            color: AppColors.textPrimary,
-            shadows: AppText.glow(color),
-          ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GlitchText(
+              widget.text,
+              enabled: widget.glitch,
+              style: AppText.display(
+                size: 26,
+                color: AppColors.textPrimary,
+                letterSpacing: 3,
+                shadows: AppText.glow(color),
+              ),
+            ),
+            if (widget.subtitle != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                widget.subtitle!,
+                textAlign: TextAlign.center,
+                style: AppText.display(size: 16, color: color, letterSpacing: 1.2),
+              ),
+            ],
+          ],
         ),
       ),
     );

@@ -5,19 +5,21 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_theme.dart';
 
 /// Fictional files "transferring" one after another as [progress] goes 0 → 1.
-/// Every name and size comes from [PrankConstants.simulatedFiles]; the device
-/// is never inspected.
+/// SIMULATED: every name and size comes from [PrankConstants]; the device's
+/// storage is never inspected, read or transmitted.
 class SimulatedFileList extends StatelessWidget {
   const SimulatedFileList({
     super.key,
     required this.progress,
     this.files = PrankConstants.simulatedFiles,
+    this.counterLabel = 'FILES PROCESSED',
     this.largeText = false,
     this.highContrast = false,
   });
 
   final double progress;
   final List<SimulatedFile> files;
+  final String counterLabel;
   final bool largeText;
   final bool highContrast;
 
@@ -61,7 +63,7 @@ class SimulatedFileList extends StatelessWidget {
         ...rows,
         const SizedBox(height: 12),
         Text(
-          'SIMULATED FILES PROCESSED: ${done.toString().padLeft(2, '0')}',
+          '$counterLabel: ${done.toString().padLeft(2, '0')}',
           style: AppText.terminal(
             color: AppColors.hackerGreen,
             large: largeText,
@@ -128,7 +130,7 @@ class _FileRow extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          file.label,
+                          file.name,
                           overflow: TextOverflow.ellipsis,
                           style: style,
                         ),

@@ -1,76 +1,79 @@
-/// Every piece of "stolen" data in the prank comes from this file.
+/// Every piece of "stolen" data in the simulation comes from this file.
 ///
-/// Nothing here is read from the device: file names, addresses, locations and
+/// Nothing here is read from the device: file names, addresses and
 /// percentages are fixed fictional values chosen for the show.
 abstract final class PrankConstants {
-  static const appTitle = "You've Been Hacked 😂";
+  static const appTitle = 'I Love You';
+  static const appSubtitle = 'A cybersecurity awareness experience';
 
-  static const allowedDurations = [15, 30, 45, 60];
-  static const defaultDurationSeconds = 30;
+  /// Choices for the ransom-style countdown length (seconds).
+  static const allowedCountdowns = [15, 30, 45, 60];
+  static const defaultCountdownSeconds = 30;
 
-  /// Share of the total prank time spent on the ransom countdown. The rest is
-  /// split between the six breach stages.
-  static const ransomShare = 1 / 3;
-
-  /// Approximate stage lengths from the design brief (seconds). They are used
-  /// as weights and scaled to fit the duration chosen in settings.
-  static const stageWeights = [4, 5, 4, 7, 4, 3];
-
-  /// How long the expired ransom screen waits for a tap when "automatically
-  /// reveal" is turned off. The reveal is always guaranteed after this.
+  /// How long the expired countdown waits when "automatically reveal" is
+  /// turned off. The reveal is always guaranteed after this.
   static const revealGracePeriod = Duration(seconds: 8);
 
   static const tickInterval = Duration(milliseconds: 100);
 
+  // Stage 1 — initialization.
   static const initializingLines = [
-    'INITIALIZING SECURE CONNECTION...',
-    'BYPASSING FIREWALL...',
-    'ESTABLISHING ENCRYPTED TUNNEL...',
-    'ANALYZING TARGET SYSTEM...',
+    'INITIALIZING CONNECTION...',
+    'ANALYZING NETWORK ROUTE...',
+    'ESTABLISHING ENCRYPTED SESSION...',
+    'SCANNING SIMULATED ENVIRONMENT...',
   ];
 
-  static const tracingLines = [
-    'TRACING NETWORK ADDRESS...',
-    'ANALYZING ROUTE...',
+  // Stage 2 — simulated remote activity.
+  static const activityLines = [
     'REMOTE CONNECTION DETECTED',
+    'ANALYZING SYSTEM STATUS...',
+    'PROCESSING SIMULATED FILES...',
+    'DATA TRANSFER: 47%',
   ];
 
-  static const breachBanner = '⚠ SYSTEM BREACH DETECTED ⚠';
+  /// Fictional system files "processed" in stage 2.
+  static const simulatedSystemFiles = [
+    SimulatedFile('system_index.db', '2.1 MB'),
+    SimulatedFile('session_cache.tmp', '640 KB'),
+    SimulatedFile('app_registry.dat', '1.4 MB'),
+  ];
 
+  // Stage 3 — dramatic warning.
+  static const alertTitle = 'SECURITY ALERT';
+  static const alertSubtitle = 'SIMULATED SYSTEM BREACH DETECTED';
+
+  /// Stage 4 — fictional files "extracted". They do not exist; the device's
+  /// storage is never read.
   static const simulatedFiles = [
     SimulatedFile('photo_collection.jpg', '4.2 MB'),
     SimulatedFile('contacts_backup.vcf', '312 KB'),
     SimulatedFile('messages_archive.txt', '1.1 MB'),
-    SimulatedFile('vacation_memories.zip', '86.4 MB'),
     SimulatedFile('personal_documents.pdf', '7.8 MB'),
-    SimulatedFile('device_backup.enc', '1.3 GB'),
   ];
 
-  static const fictionalLocation = 'QUEZON CITY, PHILIPPINES';
-
-  static const trackingLines = [
-    'SIMULATING LOCATION TRACE...',
-    'LOCATION: $fictionalLocation',
-    'CAMERA STATUS: SIMULATED',
-    'MICROPHONE STATUS: SIMULATED',
-    'DATA TRANSFER: 87%',
-  ];
-
-  static const breachCompleteLines = [
-    'SIMULATED BREACH COMPLETE',
-    'SYSTEM STATUS: COMPROMISED',
-    'FINALIZING OPERATION...',
-  ];
-
-  static const ransomAmount = '₱500';
+  // Stage 5 — ransom-inspired countdown (no payment of any kind).
+  static const compromisedStatus = 'SYSTEM STATUS: COMPROMISED';
+  static const simulationInProgress = 'SIMULATION IN PROGRESS';
 
   /// Address prefixes reserved for documentation by RFC 5737. They can never
-  /// belong to a real device, so the "traced" address is always fictional.
+  /// belong to a real device, so every "remote" address is fictional.
   static const documentationNetworks = ['192.0.2', '198.51.100', '203.0.113'];
 
-  static const shareText =
-      "I just got pranked by You've Been Hacked 😂 — my phone was never "
-      'actually hacked, it was all a harmless simulation. Gotcha!';
+  // Reveal — the lesson.
+  static const lessonHeadline = "DON'T INSTALL UNKNOWN APPS.";
+  static const lessonSubline = 'THINK BEFORE YOU CLICK.';
+  static const revealFacts = [
+    'This was a simulated hacking prank.',
+    'Your device was not hacked.',
+    'No personal files were stolen.',
+    "Always check an app's source and permissions before installing it.",
+  ];
+  static const revealExplanation =
+      'Unexpected apps can request access to your camera, contacts, location, '
+      'files, and other sensitive information. Install applications only from '
+      'trusted sources, review their permissions, and keep your device updated.';
+  static const revealAcknowledgment = 'CYBERSECURITY AWARENESS EXPERIENCE';
 }
 
 class SimulatedFile {
@@ -78,6 +81,4 @@ class SimulatedFile {
 
   final String name;
   final String size;
-
-  String get label => '[SIMULATION] $name';
 }

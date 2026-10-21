@@ -1,5 +1,5 @@
 name: hack_prank
-description: "You've Been Hacked 😂 — a harmless, fully offline cinematic hacking prank."
+description: "I Love You — a fully offline cybersecurity awareness experience."
 publish_to: 'none'
 
 version: 1.0.0+1
@@ -18,7 +18,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   flutter_animate: ^4.5.2
   gal: ^2.3.3
-  share_plus: ^12.0.2
+  sensors_plus: ^7.1.1
   shared_preferences: ^2.5.5
   vibration: ^3.1.8
   wakelock_plus: ^1.4.0

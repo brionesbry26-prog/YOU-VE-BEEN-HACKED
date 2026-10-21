@@ -8,9 +8,8 @@ import 'preferences_service.dart';
 enum HapticCue {
   connection([0, 40, 70, 40]),
   breach([0, 120, 90, 120]),
-  extractionComplete([0, 60]),
-  ransom([0, 180]),
-  reveal([0, 30, 60, 30, 60, 30]);
+  countdown([0, 180]),
+  reveal([0, 40]);
 
   const HapticCue(this.pattern);
 

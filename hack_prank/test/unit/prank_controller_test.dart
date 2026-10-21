@@ -14,7 +14,7 @@ PrankController build({
   RecordingEffects? effects,
 }) {
   return PrankController(
-    timeline: PrankTimeline.forTotal(Duration(seconds: seconds)),
+    timeline: PrankTimeline(ransomDuration: Duration(seconds: seconds)),
     effects: effects ?? RecordingEffects(),
     autoReveal: autoReveal,
     random: Random(1),
@@ -23,21 +23,28 @@ PrankController build({
 
 void main() {
   group('PrankTimeline', () {
-    for (final seconds in PrankConstants.allowedDurations) {
-      test('splits ${seconds}s exactly into six stages and a countdown', () {
-        final t = PrankTimeline.forTotal(Duration(seconds: seconds));
-        expect(t.total, Duration(seconds: seconds));
-        expect(t.stageDurations.keys, PrankStage.sequence);
-        for (final d in t.stageDurations.values) {
-          expect(d, greaterThan(Duration.zero));
-          expect(d.inMilliseconds % 100, 0, reason: 'boundaries fall on ticks');
-        }
-        expect(t.ransomDuration.inMilliseconds, closeTo(seconds * 1000 / 3, 100));
+    test('uses the brief\'s stage lengths, starting with a short title card', () {
+      final t = PrankTimeline(ransomDuration: const Duration(seconds: 30));
+      expect(t.stageDurations.keys, PrankStage.sequence);
+      expect(PrankStage.sequence.first, PrankStage.intro);
+      expect(t.durationOf(PrankStage.intro).inMilliseconds, inInclusiveRange(1000, 2500));
+      expect(t.durationOf(PrankStage.initializing), const Duration(seconds: 4));
+      expect(t.durationOf(PrankStage.activity), const Duration(seconds: 5));
+      expect(t.durationOf(PrankStage.warning), const Duration(seconds: 4));
+      expect(t.durationOf(PrankStage.extracting), const Duration(seconds: 5));
+      expect(t.durationOf(PrankStage.ransom), const Duration(seconds: 30));
+      expect(t.total, t.sequenceDuration + const Duration(seconds: 30));
+    });
+
+    for (final seconds in PrankConstants.allowedCountdowns) {
+      test('the countdown lasts exactly ${seconds}s', () {
+        final t = PrankTimeline(ransomDuration: Duration(seconds: seconds));
+        expect(t.total - t.startOf(PrankStage.ransom), Duration(seconds: seconds));
       });
     }
 
-    test('stageAt walks the stages in order and ends on the ransom', () {
-      final t = PrankTimeline.forTotal(const Duration(seconds: 30));
+    test('stageAt walks the stages in order and ends on the countdown', () {
+      final t = PrankTimeline(ransomDuration: const Duration(seconds: 30));
       final seen = <PrankStage>[];
       for (var ms = 0; ms < t.total.inMilliseconds + 2000; ms += 100) {
         final s = t.stageAt(Duration(milliseconds: ms));
@@ -45,6 +52,12 @@ void main() {
       }
       expect(seen, [...PrankStage.sequence, PrankStage.ransom]);
       expect(t.stageAt(t.startOf(PrankStage.extracting)), PrankStage.extracting);
+    });
+
+    test('numbers the five visible stages', () {
+      expect(PrankStage.intro.stageNumber, isNull);
+      expect(PrankStage.initializing.stageNumber, 1);
+      expect(PrankStage.ransom.stageNumber, 5);
     });
   });
 
@@ -56,7 +69,7 @@ void main() {
         expect(c.stage, PrankStage.idle);
 
         c.start();
-        expect(c.stage, PrankStage.initializing);
+        expect(c.stage, PrankStage.intro);
 
         async.elapse(c.timeline.total - const Duration(milliseconds: 100));
         expect(c.stage, PrankStage.ransom);
@@ -185,7 +198,7 @@ void main() {
         c.start();
         c.resume();
         expect(async.periodicTimerCount, 1);
-        expect(effects.entered, [PrankStage.initializing]);
+        expect(effects.entered, [PrankStage.intro]);
 
         async.elapse(const Duration(seconds: 1));
         expect(c.elapsed, const Duration(seconds: 1), reason: 'no double ticking');
@@ -277,7 +290,7 @@ void main() {
         first.dispose();
 
         final second = build()..start();
-        expect(second.stage, PrankStage.initializing);
+        expect(second.stage, PrankStage.intro);
         expect(second.elapsed, Duration.zero);
         expect(second.countdownExpired, isFalse);
         expect(second.ransomRemaining, second.timeline.ransomDuration);
@@ -290,7 +303,7 @@ void main() {
     test('trace addresses always come from RFC 5737 documentation ranges', () {
       for (var seed = 0; seed < 200; seed++) {
         final session = PrankSession.generate(Random(seed));
-        for (final ip in [session.traceAddress, ...session.routeHops]) {
+        for (final ip in [session.remoteAddress, ...session.routeHops]) {
           final prefix = ip.substring(0, ip.lastIndexOf('.'));
           expect(PrankConstants.documentationNetworks, contains(prefix));
           final last = int.parse(ip.split('.').last);

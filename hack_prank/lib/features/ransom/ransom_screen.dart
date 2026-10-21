@@ -4,37 +4,31 @@ import '../../core/constants/prank_constants.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_theme.dart';
 import '../../shared/effect_flags.dart';
-import '../../shared/widgets/neon_button.dart';
 import '../../shared/widgets/visual_effects.dart';
 import '../prank/widgets/countdown_timer.dart';
 import '../prank/widgets/hacker_progress_bar.dart';
 import '../prank/widgets/stage_views.dart';
 
-/// The fake ransom note: purely visual.
+/// Stage 5 — the ransom-inspired countdown. Purely visual.
 ///
-/// It locks nothing, collects nothing and links nowhere. The countdown is
-/// owned by the prank controller and always ends in the reveal; the
-/// "WAIT... WHAT?!" button reveals immediately.
+/// It asks for nothing, locks nothing, encrypts nothing and links nowhere.
+/// The countdown is owned by the prank controller and always ends with the
+/// awareness screen.
 class RansomScreen extends StatelessWidget {
   const RansomScreen({
     super.key,
     required this.remaining,
-    required this.total,
+    required this.progress,
     required this.expired,
-    required this.onReveal,
     required this.fx,
   });
 
   final Duration remaining;
-  final Duration total;
-  final bool expired;
-  final VoidCallback onReveal;
-  final EffectFlags fx;
 
-  double get _encryption {
-    if (total.inMilliseconds == 0) return 1;
-    return (1 - remaining.inMilliseconds / total.inMilliseconds).clamp(0.0, 1.0);
-  }
+  /// Progress through the countdown, 0.0 to 1.0.
+  final double progress;
+  final bool expired;
+  final EffectFlags fx;
 
   @override
   Widget build(BuildContext context) {
@@ -48,24 +42,24 @@ class RansomScreen extends StatelessWidget {
           size: 72,
           animate: fx.motion,
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         GlitchText(
-          'YOUR DEVICE HAS BEEN HACKED!',
+          PrankConstants.compromisedStatus,
           enabled: fx.glitch,
           style: AppText.display(
-            size: 34,
+            size: 30,
             color: AppColors.danger,
             shadows: AppText.glow(AppColors.danger),
           ),
         ),
         const SizedBox(height: 8),
         Text(
-          'ALL YOUR FILES ARE AT RISK!',
+          PrankConstants.simulationInProgress,
           textAlign: TextAlign.center,
-          style: AppText.display(size: 20, color: AppColors.warning),
+          style: AppText.terminal(color: AppColors.warning, size: 16, weight: FontWeight.w700),
         ),
-        const SizedBox(height: 20),
-        _RansomCard(
+        const SizedBox(height: 22),
+        _CountdownCard(
           pulse: fx.flashing,
           child: Column(
             children: [
@@ -75,50 +69,35 @@ class RansomScreen extends StatelessWidget {
               ),
               const SizedBox(height: 4),
               CountdownTimer(remaining: remaining, animate: fx.motion),
-              const SizedBox(height: 10),
-              Text(
-                'PAY ${PrankConstants.ransomAmount} TO RESTORE ACCESS',
-                textAlign: TextAlign.center,
-                style: AppText.display(size: 22, color: AppColors.textPrimary),
-              ),
             ],
           ),
         ),
-        const SizedBox(height: 18),
-        _EncryptionGraphic(progress: _encryption),
-        const SizedBox(height: 22),
-        if (expired)
-          Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: Text(
-              "TIME'S UP... OR IS IT?",
-              textAlign: TextAlign.center,
-              style: AppText.display(size: 22, color: AppColors.revealAccent),
-            ),
+        const SizedBox(height: 20),
+        _LockGrid(progress: progress),
+        if (expired) ...[
+          const SizedBox(height: 18),
+          Text(
+            'FINALIZING...',
+            textAlign: TextAlign.center,
+            style: AppText.terminal(color: AppColors.textSecondary, size: 15),
           ),
-        NeonButton(
-          label: 'WAIT... WHAT?!',
-          style: NeonButtonStyle.danger,
-          large: true,
-          icon: Icons.help_outline_rounded,
-          onPressed: onReveal,
-        ),
+        ],
       ],
     );
   }
 }
 
-class _RansomCard extends StatefulWidget {
-  const _RansomCard({required this.child, required this.pulse});
+class _CountdownCard extends StatefulWidget {
+  const _CountdownCard({required this.child, required this.pulse});
 
   final Widget child;
   final bool pulse;
 
   @override
-  State<_RansomCard> createState() => _RansomCardState();
+  State<_CountdownCard> createState() => _CountdownCardState();
 }
 
-class _RansomCardState extends State<_RansomCard>
+class _CountdownCardState extends State<_CountdownCard>
     with SingleTickerProviderStateMixin {
   late final AnimationController _c = AnimationController(
     vsync: this,
@@ -175,9 +154,9 @@ class _RansomCardState extends State<_RansomCard>
   }
 }
 
-/// A grid of file tiles that turn into padlocks as the fake encryption runs.
-class _EncryptionGraphic extends StatelessWidget {
-  const _EncryptionGraphic({required this.progress});
+/// File tiles that turn into padlocks as the countdown runs (decoration only).
+class _LockGrid extends StatelessWidget {
+  const _LockGrid({required this.progress});
 
   final double progress;
 
@@ -228,11 +207,7 @@ class _EncryptionGraphic extends StatelessWidget {
           ],
         ),
         const SizedBox(height: 14),
-        HackerProgressBar(
-          value: progress,
-          label: 'ENCRYPTING FILES (SIMULATED)',
-          color: AppColors.danger,
-        ),
+        HackerProgressBar(value: progress, label: 'ACCESS LOCK', color: AppColors.danger),
       ],
     );
   }

@@ -17,11 +17,11 @@ class HackPrankApp extends StatelessWidget {
       child: MaterialApp(
         title: PrankConstants.appTitle,
         debugShowCheckedModeBanner: false,
-        // The prank is always dark, whatever the system theme.
+        // The experience is always dark, whatever the system theme.
         theme: AppTheme.dark(),
         darkTheme: AppTheme.dark(),
         themeMode: ThemeMode.dark,
-        initialRoute: AppRoutes.home,
+        initialRoute: AppRoutes.prank,
         onGenerateRoute: AppRoutes.onGenerateRoute,
       ),
     );

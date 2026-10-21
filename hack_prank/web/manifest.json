@@ -1,11 +1,11 @@
 {
-    "name": "hack_prank",
-    "short_name": "hack_prank",
+    "name": "I Love You",
+    "short_name": "I Love You",
     "start_url": ".",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#050505",
+    "theme_color": "#050505",
+    "description": "A cybersecurity awareness experience.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

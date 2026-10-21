@@ -9,6 +9,7 @@ import 'core/services/audio_service.dart';
 import 'core/services/device_services.dart';
 import 'core/services/haptics_service.dart';
 import 'core/services/preferences_service.dart';
+import 'core/services/shake_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,7 +34,7 @@ Future<void> main() async {
         audio: audio,
         haptics: VibrationHapticsService(settings),
         wakelock: WakelockPlusService(),
-        share: SystemShareService(),
+        shake: AccelerometerShakeSensor(settings),
       ),
     ),
   );

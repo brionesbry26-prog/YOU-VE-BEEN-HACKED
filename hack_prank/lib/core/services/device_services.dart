@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:share_plus/share_plus.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
 /// Keeps the screen awake while a prank is running.
@@ -20,24 +19,6 @@ class WakelockPlusService implements WakelockService {
       await action();
     } catch (e) {
       debugPrint('Wakelock unavailable: $e');
-    }
-  }
-}
-
-/// Opens the platform share sheet. Only plain text is ever shared.
-abstract class ShareService {
-  Future<void> shareText(String text);
-}
-
-class SystemShareService implements ShareService {
-  @override
-  Future<void> shareText(String text) async {
-    try {
-      await SharePlus.instance.share(
-        ShareParams(text: text, subject: "You've Been Hacked 😂"),
-      );
-    } catch (e) {
-      debugPrint('Share unavailable: $e');
     }
   }
 }

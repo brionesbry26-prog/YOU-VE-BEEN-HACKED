@@ -4,6 +4,7 @@ import 'services/audio_service.dart';
 import 'services/device_services.dart';
 import 'services/haptics_service.dart';
 import 'services/preferences_service.dart';
+import 'services/shake_service.dart';
 
 /// The app's dependencies, created once at start-up and swapped for fakes in
 /// tests.
@@ -13,14 +14,14 @@ class AppServices {
     required this.audio,
     required this.haptics,
     required this.wakelock,
-    required this.share,
+    required this.shake,
   });
 
   final SettingsController settings;
   final AudioService audio;
   final HapticsService haptics;
   final WakelockService wakelock;
-  final ShareService share;
+  final ShakeSensor shake;
 
   static AppServices of(BuildContext context) {
     final scope = context.dependOnInheritedWidgetOfExactType<AppServicesScope>();

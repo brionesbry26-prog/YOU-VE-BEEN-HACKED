@@ -4,18 +4,19 @@ import 'package:flutter/foundation.dart';
 import 'preferences_service.dart';
 
 /// Which settings toggle controls a sound.
-enum SoundCategory { typing, alert, voice, celebration }
+enum SoundCategory { typing, alert, voice, reveal }
 
-/// The eight bundled sound effects (see `tool/generate_sounds.py`).
+/// The bundled sound effects (see `tool/generate_sounds.py`).
 enum SoundEffect {
+  startup('audio/startup.wav', SoundCategory.alert, 0.5),
   typing('audio/typing.wav', SoundCategory.typing, 0.45),
-  beep('audio/beep.wav', SoundCategory.alert, 0.7),
-  connect('audio/connect.wav', SoundCategory.alert, 0.8),
-  alarm('audio/alarm.wav', SoundCategory.alert, 0.75),
+  beep('audio/beep.wav', SoundCategory.alert, 0.6),
+  connect('audio/connect.wav', SoundCategory.alert, 0.7),
+  alarm('audio/alarm.wav', SoundCategory.alert, 0.7),
   transfer('audio/transfer.wav', SoundCategory.alert, 0.4),
-  siren('audio/siren.wav', SoundCategory.alert, 0.6),
+  countdown('audio/countdown.wav', SoundCategory.alert, 0.7),
   voice('audio/voice.wav', SoundCategory.voice, 1.0),
-  celebrate('audio/celebrate.wav', SoundCategory.celebration, 0.85);
+  reveal('audio/reveal.wav', SoundCategory.reveal, 0.6);
 
   const SoundEffect(this.asset, this.category, this.gain);
 
@@ -27,14 +28,15 @@ enum SoundEffect {
   final double gain;
 
   String get label => switch (this) {
+    SoundEffect.startup => 'Startup tone',
     SoundEffect.typing => 'Mechanical typing',
-    SoundEffect.beep => 'Terminal beeps',
-    SoundEffect.connect => 'Connection established',
+    SoundEffect.beep => 'Terminal beep',
+    SoundEffect.connect => 'Connection',
     SoundEffect.alarm => 'Warning alarm',
     SoundEffect.transfer => 'Data transfer',
-    SoundEffect.siren => 'Cinematic siren',
-    SoundEffect.voice => 'Robotic voice',
-    SoundEffect.celebrate => 'Reveal celebration',
+    SoundEffect.countdown => 'Countdown heartbeat',
+    SoundEffect.voice => 'Robotic announcement',
+    SoundEffect.reveal => 'Reveal tone',
   };
 }
 
@@ -57,7 +59,7 @@ abstract final class SoundPolicy {
       SoundCategory.typing => s.typingSounds,
       SoundCategory.alert => s.warningSounds,
       SoundCategory.voice => s.robotVoice,
-      SoundCategory.celebration => true,
+      SoundCategory.reveal => true,
     };
   }
 }
@@ -76,10 +78,10 @@ abstract class AudioService {
   Future<void> stopLoop();
 
   /// Stops every sound that belongs to the prank sequence (loops, alerts and
-  /// the voice). The reveal celebration is left alone.
+  /// the voice). The reveal tone is left alone.
   Future<void> stopPrankAudio();
 
-  /// Stops everything, including the celebration.
+  /// Stops everything, including the reveal tone.
   Future<void> stopAll();
 
   Future<void> dispose();
@@ -88,7 +90,7 @@ abstract class AudioService {
 /// [AudioService] backed by the `audioplayers` plugin.
 ///
 /// Overlap is capped by design: one loop player, two alert players used
-/// round-robin, one voice player and one celebration player.
+/// round-robin, one voice player and one reveal player.
 class AudioPlayersAudioService implements AudioService {
   AudioPlayersAudioService(this._settings);
 
@@ -97,7 +99,7 @@ class AudioPlayersAudioService implements AudioService {
   AudioPlayer? _loop;
   final List<AudioPlayer> _alerts = [];
   AudioPlayer? _voice;
-  AudioPlayer? _celebration;
+  AudioPlayer? _revealPlayer;
   int _nextAlert = 0;
 
   // Bumped by every stop. A sound that is still loading when a stop happens
@@ -136,7 +138,7 @@ class AudioPlayersAudioService implements AudioService {
         _alerts.add(p);
       }
       _voice = AudioPlayer(playerId: 'hack_prank_voice');
-      _celebration = AudioPlayer(playerId: 'hack_prank_celebration');
+      _revealPlayer = AudioPlayer(playerId: 'hack_prank_revealPlayer');
       _ready = true;
     } catch (e) {
       debugPrint('Audio unavailable, continuing silently: $e');
@@ -147,8 +149,8 @@ class AudioPlayersAudioService implements AudioService {
     switch (effect.category) {
       case SoundCategory.voice:
         return _voice;
-      case SoundCategory.celebration:
-        return _celebration;
+      case SoundCategory.reveal:
+        return _revealPlayer;
       case SoundCategory.typing:
       case SoundCategory.alert:
         if (_alerts.isEmpty) return null;
@@ -167,7 +169,7 @@ class AudioPlayersAudioService implements AudioService {
     );
     if (volume <= 0) return;
     final generation = _prankGeneration;
-    final isPrankSound = effect.category != SoundCategory.celebration;
+    final isPrankSound = effect.category != SoundCategory.reveal;
     if (!_ready) await init();
     final player = _playerFor(effect);
     if (player == null || _disposed) return;
@@ -219,7 +221,7 @@ class AudioPlayersAudioService implements AudioService {
   @override
   Future<void> stopAll() async {
     await stopPrankAudio();
-    final c = _celebration;
+    final c = _revealPlayer;
     if (c != null) await _guard(c.stop);
   }
 
@@ -228,11 +230,11 @@ class AudioPlayersAudioService implements AudioService {
     if (_disposed) return;
     await stopAll();
     _disposed = true;
-    for (final p in [?_loop, ..._alerts, ?_voice, ?_celebration]) {
+    for (final p in [?_loop, ..._alerts, ?_voice, ?_revealPlayer]) {
       await _guard(p.dispose);
     }
     _alerts.clear();
-    _loop = _voice = _celebration = null;
+    _loop = _voice = _revealPlayer = null;
   }
 
   /// The loop currently requested, if any (for diagnostics).
